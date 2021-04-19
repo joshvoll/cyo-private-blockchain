@@ -133,23 +133,23 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
 		const time = parseInt(message.split(':')[1]);
                 const currentTime = parseInt(self._getUTCTimestamp());
-                const allowedDelay = 5 * 60 * 1000;
-		console.log("TIME = ", time)
-		console.log("current TIME = ", currentTime);
-		console.log("allowd Delay = ", allowedDelay);
-		console.log("Result time = ", currentTime-time);
-                if (currentTime - time > allowedDelay) reject(new Error('Time elapsed is greater than 5 minutes'));
-                const valid = bitcoinMessage.verify(message, address, signature);
-                if (!valid) reject(new Error('Verification failed'));
-                try {
-                        const block = new BlockClass.Block({star: star, owner: address });
-                        const res = await self._addBlock(block);
-			console.log("RES BLOCK : ", res);
-                        resolve(res);
-                } catch (err) {
-		       console.log("ERROR SUBMIT START : ", err);
-                       reject(err);
-                } 
+                const allowedDelay = 5 * 60 
+                if (currentTime - time > allowedDelay) {
+                        const valid = bitcoinMessage.verify(message, address, signature);
+                        if (!valid) reject(new Error('Verification failed'));
+                        try {
+                               const block = new BlockClass.Block({star: star, owner: address });
+                               const res = await self._addBlock(block);
+			       console.log("RES BLOCK : ", res);
+                               resolve(res);
+                        } catch (err) {
+		              console.log("ERROR SUBMIT START : ", err);
+                              reject(err);
+                       } 
+		} else {
+			reject(new Error('Time elapsed is greater than 5 minutes'));
+		}
+                
         });
     }
 

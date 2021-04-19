@@ -70,9 +70,11 @@ class BlockchainController {
                         return res.status(500).send("An error happened!");
                     }
                 } catch (error) {
+	            console.log("ERROR SUBMIT STAR: ", error);
                     return res.status(500).send(error);
                 }
             } else {
+		console.log("INTERNAL SERVER ERROR: ");
                 return res.status(500).send("Check the Body Parameter!");
             }
         });

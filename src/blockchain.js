@@ -64,8 +64,29 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-           
+            try {
+		    const newHeight = self.height + 1;
+		    block.height = newHeight
+		    block.time = self._getUTCTimestamp();
+		    if (newHeight > 0) {
+			    const previousBlock = await self.getBlockByHeight(self.height);
+			    block.previousBlockHash = previousBlock.hash;
+			    console.log("previous block : ", block.previousBlockHash);
+		    }
+		    block.hash = SHA256(JSON.stringify(block)).toString();
+		    self.chain.push(block);
+		    self.height = newHeight;
+		    resolve(block);
+
+	    } catch (err) {
+		    console.log("ERROR CREATING THE BLOCK : ", err);
+		    reject(err)
+	    }
         });
+    }
+    // helper method to creaete timestamp
+    _getUTCTimestamp() {
+	    return new Date().getTime().toString().slice(0,-3);
     }
 
     /**
@@ -77,8 +98,8 @@ class Blockchain {
      * @param {*} address 
      */
     requestMessageOwnershipVerification(address) {
-        return new Promise((resolve) => {
-            
+        return new Promise((resolve) => { 
+		resolve(`${address}:${this._getUTCTimestamp()}:starRegistry`);
         });
     }
 
@@ -102,7 +123,21 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            
+		const time = parseInt(message.split(':')[1]);
+                const currentTime = parseInt(this._getUTCTimestamp());
+                const allowedDelay = 5 * 60 * 1000;
+                if (currentTime - time > allowedDelay) reject(new Error('Time elapsed is greater than 5 minutes'));
+                const valid = bitcoinMessage.verify(message, address, signature);
+                if (!valid) reject(new Error('Verification failed'));
+                try {
+                        const block = new BlockClass.Block({star: star, owner: address });
+                        const res = await self._addBlock(block);
+			console.log("RES BLOCK : ", res);
+                        resolve(res);
+                } catch (err) {
+		       console.log("ERROR SUBMIT START : ", err);
+                       reject(err);
+                } 
         });
     }
 
@@ -114,8 +149,10 @@ class Blockchain {
      */
     getBlockByHash(hash) {
         let self = this;
-        return new Promise((resolve, reject) => {
-           
+        return new Promise((resolve, reject) => {       
+		const foundBlock = self.chain.find((block) => hash === block.hash);
+                if (!foundBlock) reject(new Error('Block not found with hash: ' + hash));
+                resolve(foundBlock);
         });
     }
 
@@ -145,8 +182,12 @@ class Blockchain {
     getStarsByWalletAddress (address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => {
-            
+        return new Promise((resolve, reject) => {        
+		self.chain.forEach(async (block) => {
+                        const blockData = await block.getBData();
+                        if (blockData && blockData.owner === address) stars.push(blockData);
+                });
+                resolve(stars)
         });
     }
 
@@ -160,7 +201,24 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            
+		for (let i = 0; i < this.chain.length; i++) {
+			const currentBlock = this.chain[i];
+			if (!(await currentBlock.validate())) {
+				errorLog.push({
+					error: 'Failed validation',
+                                        block: currentBlock
+				});
+			}
+			if (i === 0) continue;
+			const previousBlock = this.chain[i-1];
+			if (currentBlock.previousBlockHash !== previousBlock.hash) {
+				errorLog.push({
+					error: 'Previous block hash does not match',
+                                        block: currentBlock
+				});
+			}
+		}
+		resolve(errroLog) 
         });
     }
 

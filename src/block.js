@@ -45,6 +45,7 @@ class Block {
             // Returning the Block is not valid
 	    self.hash = null;
 	    const validHash = SHA256(JSON.stringify(currentHash)).toString();
+	    self.hash = currentHash;
             
             // Returning the Block is valid
 	    resolve(currentHash === validHash)

@@ -74,9 +74,17 @@ class Blockchain {
 			    console.log("previous block : ", block.previousBlockHash);
 		    }
 		    block.hash = SHA256(JSON.stringify(block)).toString();
-		    self.chain.push(block);
-		    self.height = newHeight;
-		    resolve(block);
+	            self.height = newHeight;
+		    if (await self.validateChain()) {
+			    let checkBlockCreated = self.chain.push(block);
+          		    if(checkBlockCreated) {
+				    resolve(block);
+			    } else {
+				    reject("Block hasn't been added to the chain");
+			    }
+		    } else {
+			    reject("Block is not verified and not added to the chain");
+		    }
 
 	    } catch (err) {
 		    console.log("ERROR CREATING THE BLOCK : ", err);
@@ -124,9 +132,9 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
 		const time = parseInt(message.split(':')[1]);
-                const currentTime = parseInt(this._getUTCTimestamp());
-                const allowedDelay = 5 * 60 * 1000;
-                if (currentTime - time > allowedDelay) reject(new Error('Time elapsed is greater than 5 minutes'));
+                const currentTime = parseInt(self._getUTCTimestamp());
+                const allowedDelay = 5 * 60;
+                if (currentTime - time < allowedDelay) reject(new Error('Time elapsed is greater than 5 minutes'));
                 const valid = bitcoinMessage.verify(message, address, signature);
                 if (!valid) reject(new Error('Verification failed'));
                 try {
@@ -218,7 +226,7 @@ class Blockchain {
 				});
 			}
 		}
-		resolve(errroLog) 
+		resolve(errorLog) 
         });
     }
 
